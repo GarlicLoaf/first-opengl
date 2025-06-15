@@ -1,10 +1,49 @@
 #include <iostream>
+#include <fstream>
+#include <iterator>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-extern const char* vertex_shader_code;
-extern const char* fragment_shader_code;
+int check_status(GLuint object_id, PFNGLGETSHADERIVPROC object_property_getter,
+                 PFNGLGETSHADERINFOLOGPROC get_info_log_func,
+                 GLenum status_type) {
+    GLint status;
+    object_property_getter(object_id, status_type, &status);
+    if (status != GL_TRUE) {
+        GLint info_log_length;
+        object_property_getter(object_id, GL_INFO_LOG_LENGTH, &info_log_length);
+        GLchar* buffer = new GLchar[info_log_length];
+
+        GLsizei bufferSize;
+        get_info_log_func(object_id, info_log_length, &bufferSize, buffer);
+        std::cout << buffer << "\n";
+
+        delete[] buffer;
+        return 0;
+    }
+    return 1;
+}
+
+int check_shader_status(GLuint shader_id) {
+    return check_status(shader_id, glGetShaderiv, glGetShaderInfoLog,
+                        GL_COMPILE_STATUS);
+}
+
+int check_program_status(GLuint program_id) {
+    return check_status(program_id, glGetProgramiv, glGetProgramInfoLog,
+                        GL_LINK_STATUS);
+}
+
+std::string read_shader_code(const char* file_name) {
+    std::ifstream input(file_name);
+    if (!input.good()) {
+        std::cout << "File failed to load: " << file_name;
+        exit(1);
+    }
+    return std::string(std::istreambuf_iterator<char>(input),
+                       std::istreambuf_iterator<char>());
+}
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
@@ -18,7 +57,8 @@ GLFWwindow* window_setup() {
     // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
     // glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
-    GLFWwindow* window = glfwCreateWindow(800, 600, "Firs Project", NULL, NULL);
+    GLFWwindow* window =
+        glfwCreateWindow(800, 600, "First Project", NULL, NULL);
 
     if (window == NULL) {
         std::cout << "Failed to create GLFW window" << "\n";
@@ -48,12 +88,19 @@ void send_data() {
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
     // clang-format off
-    GLfloat verts[]{0.0f, 1.0f,
+    GLfloat verts[]{0.0f, 1.0f, -0.5f,
                     1.0, 0.0, 0.0,
-                    1.0f, -1.0f,
+                    1.0f, -1.0f, 0.5f,
+                    1.0, 0.0, 0.0,
+                    -1.0f, -1.0f, 0.5f,
+                    1.0, 0.0, 0.0,
+                    
+                    -1.0f, 1.0f, 0.5f,
                     0.0, 1.0, 0.0,
-                    -1.0f, -1.0f, 
-                    0.0, 0.0, 1.0
+                    0.0f, -1.0f, -0.5f,
+                    0.0, 1.0, 0.0,
+                    1.0f, 1.0f, 0.5f,
+                    0.0, 1.0, 0.0
     };
     // clang-format on
 
@@ -62,12 +109,12 @@ void send_data() {
     glBindBuffer(GL_ARRAY_BUFFER, myBufferID);
     glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), 0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), 0);
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float),
-                          (char*)(2 * sizeof(float)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
+                          (char*)(3 * sizeof(float)));
 
-    GLushort indices[] = {0, 1, 2};
+    GLushort indices[] = {0, 1, 2, 3, 4, 5};
     GLuint indexBufferID;
     glGenBuffers(1, &indexBufferID);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferID);
@@ -79,25 +126,37 @@ void install_shaders() {
     GLuint vertex_shader_id = glCreateShader(GL_VERTEX_SHADER);
     GLuint fragment_shader_id = glCreateShader(GL_FRAGMENT_SHADER);
 
-    const char* adapter[1];
-    adapter[0] = vertex_shader_code;
+    const GLchar* adapter[1];
+    std::string temp = read_shader_code("../src/vertex_shader_code.glsl");
+    adapter[0] = temp.c_str();
     glShaderSource(vertex_shader_id, 1, adapter, 0);
-    adapter[0] = fragment_shader_code;
+    temp = read_shader_code("../src/fragment_shader_code.glsl");
+    adapter[0] = temp.c_str();
     glShaderSource(fragment_shader_id, 1, adapter, 0);
 
     glCompileShader(vertex_shader_id);
     glCompileShader(fragment_shader_id);
+
+    if (!(check_shader_status(vertex_shader_id) &&
+          check_shader_status(fragment_shader_id))) {
+        return;
+    }
 
     GLuint program_id = glCreateProgram();
     glAttachShader(program_id, vertex_shader_id);
     glAttachShader(program_id, fragment_shader_id);
     glLinkProgram(program_id);
 
+    if (!check_program_status(program_id)) {
+        return;
+    }
+
     glUseProgram(program_id);
 }
 
 int main() {
     GLFWwindow* window = window_setup();
+    glEnable(GL_DEPTH_TEST);
     send_data();
     install_shaders();
 
@@ -108,6 +167,7 @@ int main() {
         // rendering
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_DEPTH_BUFFER_BIT);
         // glDrawArrays(GL_TRIANGLES, 0, 6);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
         glfwSwapBuffers(window);
