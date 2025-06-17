@@ -4,6 +4,10 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+
+const float X_DELTA = 0.1f;
+uint num_tris = 0;
 
 int check_status(GLuint object_id, PFNGLGETSHADERIVPROC object_property_getter,
                  PFNGLGETSHADERINFOLOGPROC get_info_log_func,
@@ -87,39 +91,16 @@ void send_data() {
     GLuint vao;
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
-    // clang-format off
-    GLfloat verts[]{0.0f, 1.0f, -0.5f,
-                    1.0, 0.0, 0.0,
-                    1.0f, -1.0f, 0.5f,
-                    1.0, 0.0, 0.0,
-                    -1.0f, -1.0f, 0.5f,
-                    1.0, 0.0, 0.0,
-                    
-                    -1.0f, 1.0f, 0.5f,
-                    0.0, 1.0, 0.0,
-                    0.0f, -1.0f, -0.5f,
-                    0.0, 1.0, 0.0,
-                    1.0f, 1.0f, 0.5f,
-                    0.0, 1.0, 0.0
-    };
-    // clang-format on
 
     GLuint myBufferID;
     glGenBuffers(1, &myBufferID);
     glBindBuffer(GL_ARRAY_BUFFER, myBufferID);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, 1000, NULL, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), 0);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
                           (char*)(3 * sizeof(float)));
-
-    GLushort indices[] = {0, 1, 2, 3, 4, 5};
-    GLuint indexBufferID;
-    glGenBuffers(1, &indexBufferID);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferID);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices,
-                 GL_STATIC_DRAW);
 }
 
 void install_shaders() {
@@ -154,6 +135,17 @@ void install_shaders() {
     glUseProgram(program_id);
 }
 
+void draw_triangle() {
+    const GLfloat tri_x = -1 + num_tris * X_DELTA;
+    GLfloat tri[] = {tri_x,           1.0f, 0.0f, 1.0, 0.0, 0.0,
+                     tri_x + X_DELTA, 1.0f, 0.0f, 1.0, 0.0, 0.0,
+                     tri_x,           0.0f, 0.0f, 1.0, 0.0, 0.0};
+    glBufferSubData(GL_ARRAY_BUFFER, 18 * sizeof(float) * num_tris,
+                    18 * sizeof(float), tri);
+    num_tris++;
+    return;
+}
+
 int main() {
     GLFWwindow* window = window_setup();
     glEnable(GL_DEPTH_TEST);
@@ -166,10 +158,8 @@ int main() {
 
         // rendering
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-        glClear(GL_DEPTH_BUFFER_BIT);
-        // glDrawArrays(GL_TRIANGLES, 0, 6);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        draw_triangle();
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
