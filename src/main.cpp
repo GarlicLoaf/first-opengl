@@ -5,9 +5,9 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
+#include "glm/fwd.hpp"
 
-const float X_DELTA = 0.1f;
-uint num_tris = 0;
+#include "primitives.h"
 
 int check_status(GLuint object_id, PFNGLGETSHADERIVPROC object_property_getter,
                  PFNGLGETSHADERINFOLOGPROC get_info_log_func,
@@ -135,17 +135,6 @@ void install_shaders() {
     glUseProgram(program_id);
 }
 
-void draw_triangle() {
-    const GLfloat tri_x = -1 + num_tris * X_DELTA;
-    GLfloat tri[] = {tri_x,           1.0f, 0.0f, 1.0, 0.0, 0.0,
-                     tri_x + X_DELTA, 1.0f, 0.0f, 1.0, 0.0, 0.0,
-                     tri_x,           0.0f, 0.0f, 1.0, 0.0, 0.0};
-    glBufferSubData(GL_ARRAY_BUFFER, 18 * sizeof(float) * num_tris,
-                    18 * sizeof(float), tri);
-    num_tris++;
-    return;
-}
-
 int main() {
     GLFWwindow* window = window_setup();
     glEnable(GL_DEPTH_TEST);
@@ -159,7 +148,6 @@ int main() {
         // rendering
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        draw_triangle();
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
