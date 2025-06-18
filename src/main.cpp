@@ -8,6 +8,7 @@
 #include "glm/fwd.hpp"
 
 #include "primitives.h"
+#include "shape_data.h"
 
 int check_status(GLuint object_id, PFNGLGETSHADERIVPROC object_property_getter,
                  PFNGLGETSHADERINFOLOGPROC get_info_log_func,
@@ -92,15 +93,24 @@ void send_data() {
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
 
-    GLuint myBufferID;
-    glGenBuffers(1, &myBufferID);
-    glBindBuffer(GL_ARRAY_BUFFER, myBufferID);
-    glBufferData(GL_ARRAY_BUFFER, 1000, NULL, GL_STATIC_DRAW);
+    ShapeData tri = make_triangle();
+
+    GLuint vertex_buffer_id;
+    glGenBuffers(1, &vertex_buffer_id);
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_id);
+    glBufferData(GL_ARRAY_BUFFER, tri.vertices.size() * sizeof(Vertex),
+                 tri.vertices.data(), GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), 0);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
                           (char*)(3 * sizeof(float)));
+
+    GLuint index_buffer_id;
+    glGenBuffers(1, &index_buffer_id);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_id);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, tri.indices.size() * sizeof(GLushort),
+                 tri.indices.data(), GL_STATIC_DRAW);
 }
 
 void install_shaders() {
@@ -148,6 +158,9 @@ int main() {
         // rendering
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, 0);
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
