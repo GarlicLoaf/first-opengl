@@ -1,3 +1,4 @@
+#include <complex>
 #include <iostream>
 #include <fstream>
 #include <iterator>
@@ -166,6 +167,19 @@ int main() {
     send_data();
     install_shaders();
 
+    mat4 translation_matrix =
+        glm::translate(mat4(1.0f), vec3(0.0f, 0.0f, -3.0f));
+    mat4 rotation_matrix =
+        glm::rotate(mat4(1.0f), 54.0f, vec3(0.5f, 1.0f, 0.0f));
+    mat4 projection_matrix =
+        glm::perspective(60.0f, ((float)width) / height, 0.1f, 10.0f);
+
+    mat4 transform_matrix =
+        projection_matrix * translation_matrix * rotation_matrix;
+
+    GLint transform_matrix_uniform_location =
+        glGetUniformLocation(program_id, "transformMatrix");
+
     while (!glfwWindowShouldClose(window)) {
         // input
         processInput(window);
@@ -174,20 +188,8 @@ int main() {
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        mat4 model_transform_matrix =
-            glm::translate(mat4(1.0f), vec3(0.0f, 0.0f, -2.0f));
-        mat4 projection_matrix =
-            glm::perspective(60.0f, ((float)width) / height, 0.1f, 10.0f);
-
-        GLint model_transform_matrix_uniform_location =
-            glGetUniformLocation(program_id, "modelTransformMatrix");
-        GLint projection_matrix_uniform_location =
-            glGetUniformLocation(program_id, "projectionMatrix");
-
-        glUniformMatrix4fv(model_transform_matrix_uniform_location, 1, GL_FALSE,
-                           &model_transform_matrix[0][0]);
-        glUniformMatrix4fv(projection_matrix_uniform_location, 1, GL_FALSE,
-                           &projection_matrix[0][0]);
+        glUniformMatrix4fv(transform_matrix_uniform_location, 1, GL_FALSE,
+                           &transform_matrix[0][0]);
 
         glDrawElements(GL_TRIANGLES, index_count, GL_UNSIGNED_SHORT, 0);
 
