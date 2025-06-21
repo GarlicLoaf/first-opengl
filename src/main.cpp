@@ -5,10 +5,20 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
+#include "glm/ext/matrix_clip_space.hpp"
+#include "glm/ext/matrix_transform.hpp"
 #include "glm/fwd.hpp"
 
 #include "primitives.h"
 #include "shape_data.h"
+
+using glm::mat4;
+using glm::vec3;
+
+GLuint program_id;
+
+int width, height;
+GLsizei index_count;
 
 int check_status(GLuint object_id, PFNGLGETSHADERIVPROC object_property_getter,
                  PFNGLGETSHADERINFOLOGPROC get_info_log_func,
@@ -80,6 +90,7 @@ GLFWwindow* window_setup() {
     glViewport(0, 0, 800, 600);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
+    glfwGetWindowSize(window, &width, &height);
     return window;
 }
 
@@ -93,13 +104,13 @@ void send_data() {
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
 
-    ShapeData tri = make_triangle();
+    ShapeData shape = make_cube();
 
     GLuint vertex_buffer_id;
     glGenBuffers(1, &vertex_buffer_id);
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_id);
-    glBufferData(GL_ARRAY_BUFFER, tri.vertices.size() * sizeof(Vertex),
-                 tri.vertices.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, shape.vertices.size() * sizeof(Vertex),
+                 shape.vertices.data(), GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), 0);
     glEnableVertexAttribArray(1);
@@ -109,8 +120,11 @@ void send_data() {
     GLuint index_buffer_id;
     glGenBuffers(1, &index_buffer_id);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_id);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, tri.indices.size() * sizeof(GLushort),
-                 tri.indices.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                 shape.indices.size() * sizeof(GLushort), shape.indices.data(),
+                 GL_STATIC_DRAW);
+
+    index_count = shape.indices.size();
 }
 
 void install_shaders() {
@@ -130,10 +144,11 @@ void install_shaders() {
 
     if (!(check_shader_status(vertex_shader_id) &&
           check_shader_status(fragment_shader_id))) {
-        return;
+        std::cerr << "Shader compilation failed.\n";
+        exit(1);
     }
 
-    GLuint program_id = glCreateProgram();
+    program_id = glCreateProgram();
     glAttachShader(program_id, vertex_shader_id);
     glAttachShader(program_id, fragment_shader_id);
     glLinkProgram(program_id);
@@ -159,7 +174,22 @@ int main() {
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, 0);
+        mat4 model_transform_matrix =
+            glm::translate(mat4(1.0f), vec3(0.0f, 0.0f, -2.0f));
+        mat4 projection_matrix =
+            glm::perspective(60.0f, ((float)width) / height, 0.1f, 10.0f);
+
+        GLint model_transform_matrix_uniform_location =
+            glGetUniformLocation(program_id, "modelTransformMatrix");
+        GLint projection_matrix_uniform_location =
+            glGetUniformLocation(program_id, "projectionMatrix");
+
+        glUniformMatrix4fv(model_transform_matrix_uniform_location, 1, GL_FALSE,
+                           &model_transform_matrix[0][0]);
+        glUniformMatrix4fv(projection_matrix_uniform_location, 1, GL_FALSE,
+                           &projection_matrix[0][0]);
+
+        glDrawElements(GL_TRIANGLES, index_count, GL_UNSIGNED_SHORT, 0);
 
         glfwSwapBuffers(window);
         glfwPollEvents();

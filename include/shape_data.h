@@ -10,3 +10,4 @@ struct ShapeData {
 };
 
 ShapeData make_triangle();
+ShapeData make_cube();
