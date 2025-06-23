@@ -20,6 +20,7 @@ GLuint program_id;
 
 int width, height;
 GLsizei index_count;
+GLfloat pov = 60.0f;
 
 int check_status(GLuint object_id, PFNGLGETSHADERIVPROC object_property_getter,
                  PFNGLGETSHADERINFOLOGPROC get_info_log_func,
@@ -98,6 +99,10 @@ GLFWwindow* window_setup() {
 void processInput(GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+    else if (glfwGetKey(window, GLFW_KEY_U) == GLFW_PRESS)
+        pov += 1;
+    else if (glfwGetKey(window, GLFW_KEY_J) == GLFW_PRESS)
+        pov -= 1;
 }
 
 void send_data() {
@@ -167,19 +172,6 @@ int main() {
     send_data();
     install_shaders();
 
-    mat4 translation_matrix =
-        glm::translate(mat4(1.0f), vec3(0.0f, 0.0f, -3.0f));
-    mat4 rotation_matrix =
-        glm::rotate(mat4(1.0f), 54.0f, vec3(0.5f, 1.0f, 0.0f));
-    mat4 projection_matrix =
-        glm::perspective(60.0f, ((float)width) / height, 0.1f, 10.0f);
-
-    mat4 transform_matrix =
-        projection_matrix * translation_matrix * rotation_matrix;
-
-    GLint transform_matrix_uniform_location =
-        glGetUniformLocation(program_id, "transformMatrix");
-
     while (!glfwWindowShouldClose(window)) {
         // input
         processInput(window);
@@ -187,6 +179,16 @@ int main() {
         // rendering
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        mat4 projection_matrix =
+            glm::perspective(pov, ((float)width) / height, 0.1f, 10.0f);
+        mat4 translation_matrix =
+            glm::translate(projection_matrix, vec3(0.0f, 0.0f, -3.0f));
+        mat4 transform_matrix =
+            glm::rotate(translation_matrix, 54.0f, vec3(1.0f, 0.0f, 0.0f));
+
+        GLint transform_matrix_uniform_location =
+            glGetUniformLocation(program_id, "transformMatrix");
 
         glUniformMatrix4fv(transform_matrix_uniform_location, 1, GL_FALSE,
                            &transform_matrix[0][0]);
